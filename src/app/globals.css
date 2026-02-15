@@ -1,26 +1,111 @@
 @import "tailwindcss";
 
+/* ── Design System — Warm Minimalism ────────────────────────────────────── */
+/* Natural tones · Generous whitespace · Premium feel                       */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf9f7;
+  --foreground: #1a1a1a;
+  --muted: #f0eeeb;
+  --muted-foreground: #6b6560;
+  --border: #e5e2dd;
+  --accent: #2d2926;
+  --accent-foreground: #faf9f7;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #1a1a1a;
+  --primary-foreground: #faf9f7;
+  --secondary: #f0eeeb;
+  --secondary-foreground: #1a1a1a;
+  --destructive: #c4453c;
+  --destructive-foreground: #ffffff;
+  --success: #4a7c59;
+  --warm: #d4a574;
+  --ring: #2d2926;
+  --input: #e5e2dd;
+  --radius: 12px;
+}
+
+.dark {
+  --background: #0a0a09;
+  --foreground: #e8e6e3;
+  --muted: #161614;
+  --muted-foreground: #9b9590;
+  --border: #232220;
+  --accent: #e8e6e3;
+  --accent-foreground: #0a0a09;
+  --card: #111110;
+  --card-foreground: #e8e6e3;
+  --popover: #111110;
+  --popover-foreground: #e8e6e3;
+  --primary: #e8e6e3;
+  --primary-foreground: #0a0a09;
+  --secondary: #1c1c1a;
+  --secondary-foreground: #e8e6e3;
+  --destructive: #e05a52;
+  --destructive-foreground: #ffffff;
+  --success: #6ba37a;
+  --warm: #d4a574;
+  --ring: #e8e6e3;
+  --input: #232220;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warm: var(--warm);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ── Code blocks ────────────────────────────────────────────────────────── */
+
+pre {
+  border-radius: var(--radius) !important;
+  margin: 0.75rem 0 !important;
+  font-size: 0.8125rem !important;
+}
+
+pre code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace !important;
+}
+
+/* ── Selection ──────────────────────────────────────────────────────────── */
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
