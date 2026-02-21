@@ -9,11 +9,15 @@
 // ── Types ──────────────────────────────────────────────────────────────────
 export type {
   AIProvider,
+  ModelCapability,
   ModelConfig,
   ProviderCategory,
   ProviderModels,
   ResolvedProviderConfig,
 } from "./types";
+
+// ── Data ───────────────────────────────────────────────────────────────────
+export { modelConfigs } from "./models";
 
 // ── Runtime ────────────────────────────────────────────────────────────────
 export {

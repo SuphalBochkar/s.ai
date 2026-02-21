@@ -16,22 +16,26 @@ import {
   X,
   Plus,
   LogOut,
-  Sparkles,
   Search,
   Code,
   MessageSquare,
   BarChart3,
-  Zap,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { MessageBubble } from "./message-bubble";
 import { ModelSelector } from "./model-selector";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { AI_PROVIDER_MODELS, type AIProvider } from "@/lib/ai";
+import {
+  AI_PROVIDER_MODELS,
+  modelConfigs,
+  type AIProvider,
+} from "@/lib/ai";
 import { signOut } from "@/lib/auth/client";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 
-// ── Build provider list ────────────────────────────────────────────────────
+// ── Build provider list with full metadata ─────────────────────────────────
 
 const providers = (
   Object.entries(AI_PROVIDER_MODELS) as [
@@ -40,7 +44,19 @@ const providers = (
   ][]
 )
   .filter(([, config]) => config.freeModels.length > 0)
-  .map(([id, config]) => ({ id, ...config }));
+  .map(([id, config]) => {
+    const full = modelConfigs[id];
+    return {
+      id,
+      ...config,
+      paidModels: full?.paidModels ?? [],
+      category: full?.category,
+      capabilities: full?.capabilities,
+      supportsStreaming: full?.supportsStreaming,
+      notes: full?.notes,
+      rateLimits: full?.rateLimits,
+    };
+  });
 
 // ── Suggestions ────────────────────────────────────────────────────────────
 
@@ -392,15 +408,39 @@ export function ChatArea() {
       {/* ── Error ── */}
       {error && (
         <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 pb-2">
-          <div className="flex items-start gap-2.5 rounded-xl bg-destructive/8 border border-destructive/15 px-4 py-3 animate-fade-in-up">
+          <div className="flex items-start gap-3 rounded-xl bg-destructive/8 border border-destructive/15 px-4 py-3 animate-fade-in-up">
+            <AlertTriangle className="size-4 text-destructive shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-destructive font-medium">
-                Request failed
+                {error.message?.includes("429") || error.message?.includes("rate")
+                  ? "Rate limited"
+                  : error.message?.includes("RetryError") || error.message?.includes("retry")
+                    ? "Retries exhausted"
+                    : "Request failed"}
               </p>
               <p className="text-xs text-destructive/70 mt-0.5 wrap-break-word">
-                {error.message ||
-                  "The model may not support this request. Try a different model."}
+                {error.message || "The model may not support this request."}
               </p>
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    // Retry last user message
+                    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+                    if (lastUserMsg) {
+                      const text = getMessageText(lastUserMsg);
+                      if (text) sendMessage({ text });
+                    }
+                  }}
+                  className="flex items-center gap-1 text-[11px] text-destructive/70 hover:text-destructive transition-colors"
+                >
+                  <RefreshCw className="size-3" />
+                  Retry
+                </button>
+                <span className="text-destructive/20">·</span>
+                <span className="text-[11px] text-destructive/40">
+                  Try a different model or provider
+                </span>
+              </div>
             </div>
           </div>
         </div>

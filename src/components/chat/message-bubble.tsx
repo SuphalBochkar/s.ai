@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Copy, Check, Bot } from "lucide-react";
-import { useState, memo, useMemo } from "react";
+import { useState, memo, useCallback } from "react";
 
 type Props = {
   content: string;
@@ -191,6 +191,13 @@ const remarkPlugins = [remarkGfm];
 
 export const MessageBubble = memo(function MessageBubble({ content, role }: Props) {
   const isUser = role === "user";
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyResponse = useCallback(() => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [content]);
 
   if (isUser) {
     return (
@@ -206,7 +213,7 @@ export const MessageBubble = memo(function MessageBubble({ content, role }: Prop
 
   // Assistant message
   return (
-    <div className="flex py-2 animate-fade-in-up">
+    <div className="flex py-2 animate-fade-in-up group/msg">
       <div className="flex items-start gap-3 max-w-full min-w-0">
         <div className="size-6 rounded-md bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
           <Bot className="size-3 text-accent" />
@@ -220,14 +227,36 @@ export const MessageBubble = memo(function MessageBubble({ content, role }: Prop
               <span className="size-1.5 rounded-full bg-accent/40 animate-pulse-soft [animation-delay:400ms]" />
             </div>
           ) : (
-            <div className="prose-sm prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-              <ReactMarkdown
-                remarkPlugins={remarkPlugins}
-                components={markdownComponents}
-              >
-                {content}
-              </ReactMarkdown>
-            </div>
+            <>
+              <div className="prose-sm prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                <ReactMarkdown
+                  remarkPlugins={remarkPlugins}
+                  components={markdownComponents}
+                >
+                  {content}
+                </ReactMarkdown>
+              </div>
+
+              {/* Copy full response */}
+              <div className="mt-1.5 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                <button
+                  onClick={handleCopyResponse}
+                  className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors px-1 py-0.5 rounded"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="size-3 text-success" />
+                      <span className="text-success">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="size-3" />
+                      <span>Copy response</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
