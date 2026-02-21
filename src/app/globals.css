@@ -155,9 +155,4 @@ pre code {
   animation: pulse-soft 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* ── Textarea reset ─────────────────────────────────────────────────────── */
-
-textarea {
-  field-sizing: content;
-}
 

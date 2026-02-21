@@ -7,6 +7,7 @@
 
 // ── Provider Identity ──────────────────────────────────────────────────────
 
+// src/lib/ai/types.ts
 export type AIProvider =
   | "openai"
   | "openrouter"
@@ -23,31 +24,65 @@ export type AIProvider =
   | "hyperbolic"
   | "fireworks"
   | "scaleway"
-  | "aihubmix";
+  | "aihubmix"
+  | "replicate"
+  | "stability"
+  | "runpod"
+  | "banana"
+  | "together"
+  | "deepseek"
+  | "nebius"
+  | "novita"
+  | "ai21"
+  | "upstage"
+  | "nlpcloud"
+  | "alibaba-cloud"
+  | "inference-net"
+  | "baseten"
+  | "modal"
+  | "vercel-ai"
+  | "google-vertex";
 
-export type ProviderCategory = "paid" | "free" | "trial" | "community";
+export type ProviderCategory = "paid" | "free" | "trial" | "community" | "infra";
+export type ModelCapability = "text" | "code" | "vision" | "audio" | "multimodal" | "embeddings" | "infra";
 
-// ── Configuration Shapes ───────────────────────────────────────────────────
-
-/** Schema for each entry in models.json — pure data, no secrets. */
+/**
+ * Static configuration shape (committed to repo; no secrets here).
+ * Per-provider metadata + lists of model slugs likely to be available.
+ */
 export type ModelConfig = {
   category: ProviderCategory;
   apiKeyEnv: string;
   baseURL: string;
   defaultModel: string;
   freeModels: string[];
+  paidModels: string[];
+  /** high-level capabilities this provider commonly supports */
+  capabilities?: ModelCapability[];
+  /** used by UIs or automated selection */
+  recommendedFor?: ModelCapability[];
+  supportsStreaming?: boolean;
+  /** optional human note */
+  notes?: string;
+  /** basic rate limits (approx, optional) */
+  rateLimits?: {
+    requestsPerMinute?: number;
+    tokensPerMinute?: number;
+  };
 };
 
-/** Runtime-resolved config (API key filled from env). */
+/** Runtime-resolved shape (reads api key from env). */
 export type ResolvedProviderConfig = {
-  apiKey: string | undefined;
+  apiKey?: string;
   baseURL: string;
   defaultModel: string;
   freeModels: string[];
+  capabilities?: ModelCapability[];
+  recommendedFor?: ModelCapability[];
+  supportsStreaming?: boolean;
+  notes?: string;
+  rateLimits?: { requestsPerMinute?: number; tokensPerMinute?: number } | undefined;
 };
 
-/** What consumers see (chat route validation, model selector UI). */
-export type ProviderModels = {
-  defaultModel: string;
-  freeModels: string[];
-};
+/** Minimal set shown to frontends / validation */
+export type ProviderModels = { defaultModel: string; freeModels: string[] };

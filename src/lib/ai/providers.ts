@@ -1,142 +1,108 @@
-/**
- * AI Provider Runtime
- * ────────────────────────────────────────────────────────────────────────────
- * Pure logic — client creation, caching, SDK provider resolution.
- * Model data lives in `models.json`; types live in `types.ts`.
- *
- * Works with both:
- *   - OpenAI SDK        → getAIClient()     (raw chat completions)
- *   - Vercel AI SDK     → getAISDKModel()   (generateText, streamText, etc.)
- */
+// src/lib/ai/providers.ts
 import OpenAI from "openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
-import { DEFAULT_AI_PROVIDER } from "@/lib/env";
-import type {
-  AIProvider,
-  ModelConfig,
-  ProviderModels,
-  ResolvedProviderConfig,
-} from "./types";
+import type { AIProvider, ModelCapability, ProviderModels, ResolvedProviderConfig } from "./types";
 import { modelConfigs } from "./models";
 
-// ── Config Resolution ──────────────────────────────────────────────────────
 
-const configs = modelConfigs as Record<AIProvider, ModelConfig>;
-
-/** Replace `{ENV_VAR}` placeholders in baseURL with process.env values. */
 function resolveBaseURL(url: string): string {
   return url.replace(/\{(\w+)\}/g, (_, key: string) => process.env[key] ?? "");
 }
 
-/** Resolve a ModelConfig entry into a runtime-ready config. */
-function resolveConfig(provider: AIProvider): ResolvedProviderConfig {
-  const raw = configs[provider];
+export function resolveConfig(provider: AIProvider): ResolvedProviderConfig {
+  const raw = modelConfigs[provider];
+  if (!raw) {
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+
   return {
     apiKey: process.env[raw.apiKeyEnv],
     baseURL: resolveBaseURL(raw.baseURL),
     defaultModel: raw.defaultModel,
     freeModels: raw.freeModels,
+    capabilities: raw.capabilities,
+    recommendedFor: raw.recommendedFor,
+    supportsStreaming: raw.supportsStreaming,
+    notes: raw.notes,
+    rateLimits: raw.rateLimits,
   };
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function isAIProvider(value: string): value is AIProvider {
-  return value in configs;
+/** Is this provider key present in our static modelConfigs? */
+export function isAIProvider(value: string): value is AIProvider {
+  return Object.prototype.hasOwnProperty.call(modelConfigs, value);
 }
 
-export const AI_DEFAULT_PROVIDER: AIProvider =
-  DEFAULT_AI_PROVIDER && isAIProvider(DEFAULT_AI_PROVIDER)
-    ? DEFAULT_AI_PROVIDER
-    : "openrouter";
+/** Default provider (override by setting DEFAULT_AI_PROVIDER in env). */
+export const AI_DEFAULT_PROVIDER: AIProvider = (() => {
+  const env = process.env["DEFAULT_AI_PROVIDER"];
+  if (env && isAIProvider(env)) return env;
+  return "openrouter";
+})();
 
-/** Consumer-facing model lists (used by chat route validation & UI). */
-export const AI_PROVIDER_MODELS: Record<AIProvider, ProviderModels> =
-  Object.fromEntries(
-    Object.entries(configs).map(([provider, config]) => [
-      provider,
-      { defaultModel: config.defaultModel, freeModels: config.freeModels },
-    ]),
-  ) as Record<AIProvider, ProviderModels>;
+/** Minimal model lists used by UIs & validation. */
+export const AI_PROVIDER_MODELS: Record<string, ProviderModels> = Object.fromEntries(
+  Object.entries(modelConfigs).map(([provider, cfg]) => [
+    provider,
+    { defaultModel: cfg.defaultModel, freeModels: cfg.freeModels || [] },
+  ]),
+);
 
-export function getDefaultModel(
-  provider: AIProvider = AI_DEFAULT_PROVIDER,
-): string {
-  return configs[provider].defaultModel;
+/** Get default model string for a provider. */
+export function getDefaultModel(provider: AIProvider = AI_DEFAULT_PROVIDER): string {
+  return modelConfigs[provider]?.defaultModel ?? "";
 }
 
-// ── Caches ─────────────────────────────────────────────────────────────────
-
+// ---------- Caches ----------
 const openaiClientCache = new Map<string, OpenAI>();
-const sdkProviderCache = new Map<
-  string,
-  ReturnType<typeof createOpenAICompatible>
->();
-
-// ── OpenAI SDK Client (raw access) ─────────────────────────────────────────
+const sdkProviderCache = new Map<string, ReturnType<typeof createOpenAICompatible> | ReturnType<typeof createOpenRouter>>();
 
 /**
- * Get a raw OpenAI SDK client for any provider.
- * Use for: embeddings, images, fine-tuning, or full control.
- *
- * @example
- * ```ts
- * const client = getAIClient("groq");
- * const res = await client.chat.completions.create({
- *   model: getDefaultModel("groq"),
- *   messages: [{ role: "user", content: "Hello" }],
- * });
- * console.log(res.choices[0].message.content);
- * ```
+ * Create/return an OpenAI SDK client pointed at any provider that supports an
+ * OpenAI-compatible HTTP API. Useful for embeddings, images, and low-level ops.
  */
-export function getAIClient(
-  provider: AIProvider = AI_DEFAULT_PROVIDER,
-): OpenAI {
+export function getAIClient(provider: AIProvider = AI_DEFAULT_PROVIDER): OpenAI {
   const cached = openaiClientCache.get(provider);
   if (cached) return cached;
 
-  const config = resolveConfig(provider);
-  if (!config.apiKey) {
+  const cfg = resolveConfig(provider);
+  if (!cfg.apiKey) {
     throw new Error(
-      `Missing API key for provider "${provider}". ` +
-        `Set the ${configs[provider].apiKeyEnv} environment variable.`,
+      `Missing API key for provider "${provider}". Please set env ${modelConfigs[provider].apiKeyEnv}`
     );
   }
 
   const client = new OpenAI({
-    apiKey: config.apiKey,
-    baseURL: config.baseURL,
+    apiKey: cfg.apiKey,
+    baseURL: cfg.baseURL,
   });
 
   openaiClientCache.set(provider, client);
   return client;
 }
 
-// ── Vercel AI SDK Providers ────────────────────────────────────────────────
-
+/**
+ * Get an SDK provider compatible with the Vercel AI SDK approach.
+ * Special-cases: OpenRouter has a native SDK; everything else uses the openai-compatible adapter.
+ */
 export function getAISDKProvider(provider: AIProvider) {
   const cached = sdkProviderCache.get(provider);
   if (cached) return cached;
 
-  const config = resolveConfig(provider);
+  const cfg = resolveConfig(provider);
 
-  // OpenRouter has its own SDK — special case
   if (provider === "openrouter") {
-    const p = createOpenRouter({ apiKey: config.apiKey ?? "" });
-    sdkProviderCache.set(
-      provider,
-      p as unknown as ReturnType<typeof createOpenAICompatible>,
-    );
+    const p = createOpenRouter({ apiKey: cfg.apiKey ?? "" });
+    sdkProviderCache.set(provider, p);
     return p;
   }
 
-  // Every other provider uses the openai-compatible adapter
   const p = createOpenAICompatible({
     name: provider,
-    baseURL: config.baseURL,
-    headers: { Authorization: `Bearer ${config.apiKey ?? ""}` },
+    baseURL: cfg.baseURL,
+    headers: { Authorization: `Bearer ${cfg.apiKey ?? ""}` },
   });
 
   sdkProviderCache.set(provider, p);
@@ -144,29 +110,65 @@ export function getAISDKProvider(provider: AIProvider) {
 }
 
 /**
- * Get a Vercel AI SDK `LanguageModel` ready for `generateText`,
- * `streamText`, `ToolLoopAgent`, etc.
- *
- * @example
- * ```ts
- * import { generateText } from "ai";
- * import { getAISDKModel } from "@/lib/ai";
- *
- * const { text } = await generateText({
- *   model: getAISDKModel("nvidia", "deepseek-ai/deepseek-v3.1-terminus"),
- *   prompt: "Explain quantum computing",
- * });
- * ```
+ * Return a LanguageModel object ready for Vercel-style generateText/streamText use.
+ * Usage: model: getAISDKModel("openrouter", "openai/gpt-oss-20b:free")
  */
 export function getAISDKModel(provider: AIProvider, modelId: string) {
-  const p = getAISDKProvider(provider);
+  const sdk = getAISDKProvider(provider);
 
-  // OpenRouter uses `.chat()`, openai-compatible uses `.chatModel()`
-  if ("chat" in p && typeof p.chat === "function") {
-    return (p as ReturnType<typeof createOpenRouter>).chat(modelId);
+  // OpenRouter exposes .chat(); the adapter exposes .chatModel
+  if ("chat" in sdk && typeof (sdk).chat === "function") {
+    return (sdk as unknown as ReturnType<typeof createOpenRouter>).chat(modelId);
   }
 
-  return (p as ReturnType<typeof createOpenAICompatible>).chatModel(modelId);
+  return (sdk as unknown as ReturnType<typeof createOpenAICompatible>).chatModel(modelId);
 }
 
+/**
+ * Lightweight automatic model selection helper.
+ * - capability: the task capability you need (text | code | vision | audio | embeddings)
+ * - preferFree: if true prefer free/trial providers first
+ * - preferredProviders: optional allowlist (helps for geographic/regulatory reasons)
+ *
+ * Returns: { provider, model } or null when nothing found.
+ */
+export function selectModelForTask({
+  capability,
+  preferFree = true,
+  preferredProviders,
+}: {
+  capability: ModelCapability;
+  preferFree?: boolean;
+  preferredProviders?: AIProvider[];
+}): { provider: AIProvider; model: string } | null {
+  // gather candidate providers that list the capability
+  const candidates = Object.entries(modelConfigs)
+    .filter(([provider, cfg]) => {
+      if (preferredProviders && !preferredProviders.includes(provider as AIProvider)) return false;
+      const caps = cfg.capabilities ?? [];
+      return caps.includes(capability) || (cfg.defaultModel && capability === "text");
+    })
+    .map(([p, cfg]) => ({ provider: p as AIProvider, cfg }));
 
+  // scoring: prefer free/trial first if requested, then by category order, then by presence of freeModels
+  const scored = candidates
+    .map(({ provider, cfg }) => {
+      const score =
+        (preferFree && (cfg.category === "free" || cfg.category === "trial") ? 30 : 0) +
+        (cfg.freeModels && cfg.freeModels.length ? 10 : 0) +
+        (cfg.category === "paid" ? 1 : 0);
+      return { provider, cfg, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  for (const c of scored) {
+    // prefer a free model if preferFree and available
+    if (preferFree && c.cfg.freeModels && c.cfg.freeModels.length > 0) {
+      return { provider: c.provider, model: c.cfg.freeModels[0] };
+    }
+    // otherwise return default model when present
+    if (c.cfg.defaultModel) return { provider: c.provider, model: c.cfg.defaultModel };
+  }
+
+  return null;
+}

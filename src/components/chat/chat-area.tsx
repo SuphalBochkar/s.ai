@@ -166,6 +166,7 @@ export function ChatArea() {
 
     const text = input.trim();
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     if (imageFiles.length > 0) {
       const dt = new DataTransfer();
@@ -189,6 +190,16 @@ export function ChatArea() {
       }
     },
     [handleSend],
+  );
+
+  // adjust textarea height to fit content
+  const handleInputResize = useCallback(
+    (e: React.FormEvent<HTMLTextAreaElement>) => {
+      const ta = e.currentTarget;
+      ta.style.height = "auto";
+      ta.style.height = `${ta.scrollHeight}px`;
+    },
+    [],
   );
 
   async function handleSignOut() {
@@ -267,6 +278,7 @@ export function ChatArea() {
                   ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onInput={handleInputResize}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask a question…"
                   rows={1}
@@ -443,6 +455,7 @@ export function ChatArea() {
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onInput={handleInputResize}
                 onKeyDown={handleKeyDown}
                 placeholder="Message…"
                 rows={1}
