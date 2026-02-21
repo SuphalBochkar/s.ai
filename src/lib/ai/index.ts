@@ -5,8 +5,22 @@
  *
  *   import { getAIClient, getAISDKModel, type AIProvider } from "@/lib/ai";
  */
+
+// ── Types ──────────────────────────────────────────────────────────────────
+export type {
+  AIProvider,
+  ModelCapability,
+  ModelConfig,
+  ProviderCategory,
+  ProviderModels,
+  ResolvedProviderConfig,
+} from "./types";
+
+// ── Data ───────────────────────────────────────────────────────────────────
+export { modelConfigs } from "./models";
+
+// ── Runtime ────────────────────────────────────────────────────────────────
 export {
-  type AIProvider,
   AI_DEFAULT_PROVIDER,
   AI_PROVIDER_MODELS,
   getAIClient,
