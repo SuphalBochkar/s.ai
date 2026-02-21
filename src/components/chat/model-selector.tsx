@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Check, ChevronDown, Sparkles, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -33,6 +31,24 @@ type Props = {
   onSelectModel: (provider: AIProvider, model: string) => void;
 };
 
+// ── Provider display config ────────────────────────────────────────────────
+
+const providerMeta: Partial<Record<AIProvider, { icon: string; color: string }>> = {
+  openrouter: { icon: "⚡", color: "text-orange-500" },
+  groq: { icon: "🔥", color: "text-amber-500" },
+  cerebras: { icon: "🧠", color: "text-purple-500" },
+  "google-ai": { icon: "✦", color: "text-blue-500" },
+  mistral: { icon: "◆", color: "text-cyan-500" },
+  nvidia: { icon: "▲", color: "text-green-500" },
+  huggingface: { icon: "🤗", color: "text-yellow-500" },
+  cohere: { icon: "◎", color: "text-pink-500" },
+  "github-models": { icon: "⬡", color: "text-indigo-500" },
+  cloudflare: { icon: "☁", color: "text-orange-400" },
+  sambanova: { icon: "◈", color: "text-violet-500" },
+  hyperbolic: { icon: "∞", color: "text-rose-500" },
+  scaleway: { icon: "◇", color: "text-teal-500" },
+};
+
 function formatProviderName(id: string): string {
   return id
     .split("-")
@@ -44,7 +60,7 @@ function formatModelName(model: string): string {
   return model.replace(/^.*\//, "").replace(/:free$/, "");
 }
 
-function truncateModel(model: string, max = 28): string {
+function truncateModel(model: string, max = 24): string {
   const name = formatModelName(model);
   return name.length > max ? name.slice(0, max - 1) + "…" : name;
 }
@@ -55,143 +71,104 @@ export function ModelSelector({
   selectedModel,
   onSelectModel,
 }: Props) {
-  const [providerOpen, setProviderOpen] = useState(false);
-  const [modelOpen, setModelOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const currentProvider = providers.find((p) => p.id === selectedProvider);
-  const models = currentProvider?.freeModels ?? [];
+  const meta = providerMeta[selectedProvider];
 
-  function handleProviderSelect(providerId: AIProvider) {
-    const provider = providers.find((p) => p.id === providerId);
-    if (provider) {
-      onSelectModel(providerId, provider.freeModels[0] ?? provider.defaultModel);
-    }
-    setProviderOpen(false);
-  }
+  // Group models by provider for the popover
+  const groupedProviders = useMemo(() => {
+    return providers.map((p) => ({
+      ...p,
+      meta: providerMeta[p.id],
+      displayName: formatProviderName(p.id),
+    }));
+  }, [providers]);
 
-  function handleModelSelect(model: string) {
-    onSelectModel(selectedProvider, model);
-    setModelOpen(false);
+  function handleSelect(providerId: AIProvider, model: string) {
+    onSelectModel(providerId, model);
+    setOpen(false);
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      {/* ── Provider Pill ── */}
-      <Popover open={providerOpen} onOpenChange={setProviderOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            role="combobox"
-            aria-expanded={providerOpen}
-            className="h-8 gap-1.5 rounded-full border border-border/60 bg-card/80 px-3 text-xs font-medium shadow-sm backdrop-blur-sm hover:bg-card hover:border-border transition-all"
-          >
-            <span className="text-foreground">
-              {formatProviderName(selectedProvider)}
-            </span>
-            <ChevronsUpDown className="size-3 text-muted-foreground/60" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-60 p-0 rounded-xl border border-border/60 shadow-lg"
-          align="start"
-          sideOffset={6}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="flex items-center gap-1.5 h-7 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all cursor-pointer select-none"
+          aria-label="Select model"
         >
-          <Command>
-            <CommandInput placeholder="Search providers…" className="text-xs" />
-            <CommandList>
-              <CommandEmpty className="py-4 text-xs text-muted-foreground">
-                No provider found.
-              </CommandEmpty>
-              <CommandGroup>
-                {providers.map((provider) => (
-                  <CommandItem
-                    key={provider.id}
-                    value={provider.id}
-                    onSelect={() => handleProviderSelect(provider.id)}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs cursor-pointer"
-                  >
-                    <div className="flex items-center justify-center size-5 rounded-md bg-muted text-[10px] font-bold text-muted-foreground shrink-0">
-                      {formatProviderName(provider.id).charAt(0)}
-                    </div>
-                    <span className="flex-1 truncate font-medium">
-                      {formatProviderName(provider.id)}
+          {meta && (
+            <span className="text-sm leading-none">{meta.icon}</span>
+          )}
+          <span className="font-medium truncate max-w-36">
+            {truncateModel(selectedModel)}
+          </span>
+          <ChevronDown className="size-3 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-72 p-0 rounded-xl border border-border/60 shadow-xl bg-popover"
+        align="end"
+        sideOffset={8}
+      >
+        <Command>
+          <div className="px-3 pt-3 pb-2">
+            <CommandInput
+              placeholder="Search models…"
+              className="text-xs"
+            />
+          </div>
+          <CommandList className="max-h-80 px-1.5 pb-1.5">
+            <CommandEmpty className="py-6 text-center text-xs text-muted-foreground">
+              No models found.
+            </CommandEmpty>
+            {groupedProviders.map((provider) => (
+              <CommandGroup
+                key={provider.id}
+                heading={
+                  <div className="flex items-center gap-1.5 px-1">
+                    {provider.meta && (
+                      <span className="text-xs">{provider.meta.icon}</span>
+                    )}
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/60">
+                      {provider.displayName}
                     </span>
-                    <Badge
-                      variant="muted"
-                      className="text-[10px] tabular-nums px-1.5 py-0 h-4.5 rounded-full"
-                    >
+                    <span className="text-[10px] tabular-nums text-muted-foreground/30 ml-auto">
                       {provider.freeModels.length}
-                    </Badge>
-                    <Check
-                      className={cn(
-                        "size-3.5 shrink-0 text-foreground",
-                        selectedProvider === provider.id
-                          ? "opacity-100"
-                          : "opacity-0",
-                      )}
-                    />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-
-      <span className="text-muted-foreground/40 text-xs select-none">/</span>
-
-      {/* ── Model Pill ── */}
-      <Popover open={modelOpen} onOpenChange={setModelOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            role="combobox"
-            aria-expanded={modelOpen}
-            className="h-8 max-w-60 gap-1.5 rounded-full border border-border/60 bg-card/80 px-3 text-xs font-medium shadow-sm backdrop-blur-sm hover:bg-card hover:border-border transition-all"
-          >
-            <span className="truncate text-muted-foreground">
-              {truncateModel(selectedModel)}
-            </span>
-            <ChevronsUpDown className="size-3 text-muted-foreground/60 shrink-0" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[320px] p-0 rounded-xl border border-border/60 shadow-lg"
-          align="start"
-          sideOffset={6}
-        >
-          <Command>
-            <CommandInput placeholder="Search models…" className="text-xs" />
-            <CommandList className="max-h-70">
-              <CommandEmpty className="py-4 text-xs text-muted-foreground">
-                No model found.
-              </CommandEmpty>
-              <CommandGroup>
-                {models.map((model) => (
-                  <CommandItem
-                    key={model}
-                    value={formatModelName(model)}
-                    onSelect={() => handleModelSelect(model)}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs cursor-pointer"
-                  >
-                    <span className="flex-1 truncate font-mono text-[11px]">
-                      {formatModelName(model)}
                     </span>
-                    <Check
+                  </div>
+                }
+              >
+                {provider.freeModels.map((model) => {
+                  const isSelected =
+                    selectedProvider === provider.id &&
+                    selectedModel === model;
+                  return (
+                    <CommandItem
+                      key={`${provider.id}/${model}`}
+                      value={`${provider.displayName} ${formatModelName(model)}`}
+                      onSelect={() => handleSelect(provider.id, model)}
                       className={cn(
-                        "size-3.5 shrink-0 text-foreground",
-                        selectedModel === model ? "opacity-100" : "opacity-0",
+                        "flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs cursor-pointer",
+                        isSelected && "bg-accent/8",
                       )}
-                    />
-                  </CommandItem>
-                ))}
+                    >
+                      <span className="flex-1 truncate font-mono text-[11px]">
+                        {formatModelName(model)}
+                      </span>
+                      {isSelected && (
+                        <div className="size-4 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
+                          <Check className="size-2.5 text-accent" />
+                        </div>
+                      )}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </div>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

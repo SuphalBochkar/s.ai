@@ -1,55 +1,59 @@
 @import "tailwindcss";
 
-/* ── Design System — Warm Minimalism ────────────────────────────────────── */
-/* Natural tones · Generous whitespace · Premium feel                       */
+/* ── Design System ──────────────────────────────────────────── */
+/* Deep warmth · Amber accents · Fluid motion · Premium density             */
 
 :root {
   --background: #faf9f7;
-  --foreground: #1a1a1a;
+  --foreground: #1c1917;
   --muted: #f0eeeb;
-  --muted-foreground: #6b6560;
-  --border: #e5e2dd;
-  --accent: #2d2926;
-  --accent-foreground: #faf9f7;
+  --muted-foreground: #78716c;
+  --border: #e7e5e4;
+  --accent: #c2410c;
+  --accent-foreground: #fff7ed;
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #1c1917;
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #1a1a1a;
-  --primary-foreground: #faf9f7;
-  --secondary: #f0eeeb;
-  --secondary-foreground: #1a1a1a;
-  --destructive: #c4453c;
+  --popover-foreground: #1c1917;
+  --primary: #1c1917;
+  --primary-foreground: #fafaf9;
+  --secondary: #f5f5f4;
+  --secondary-foreground: #1c1917;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --success: #4a7c59;
-  --warm: #d4a574;
-  --ring: #2d2926;
-  --input: #e5e2dd;
+  --success: #16a34a;
+  --warm: #ea580c;
+  --ring: #c2410c;
+  --input: #e7e5e4;
   --radius: 12px;
+  --surface-a: #f5f4f1;
+  --surface-b: #edebe8;
 }
 
 .dark {
-  --background: #0a0a09;
-  --foreground: #e8e6e3;
-  --muted: #161614;
-  --muted-foreground: #9b9590;
-  --border: #232220;
-  --accent: #e8e6e3;
-  --accent-foreground: #0a0a09;
-  --card: #111110;
-  --card-foreground: #e8e6e3;
-  --popover: #111110;
-  --popover-foreground: #e8e6e3;
-  --primary: #e8e6e3;
-  --primary-foreground: #0a0a09;
-  --secondary: #1c1c1a;
-  --secondary-foreground: #e8e6e3;
-  --destructive: #e05a52;
+  --background: #0c0a09;
+  --foreground: #e7e5e4;
+  --muted: #1c1917;
+  --muted-foreground: #a8a29e;
+  --border: #292524;
+  --accent: #ea580c;
+  --accent-foreground: #fff7ed;
+  --card: #141211;
+  --card-foreground: #e7e5e4;
+  --popover: #1a1816;
+  --popover-foreground: #e7e5e4;
+  --primary: #fafaf9;
+  --primary-foreground: #0c0a09;
+  --secondary: #1c1917;
+  --secondary-foreground: #e7e5e4;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --success: #6ba37a;
-  --warm: #d4a574;
-  --ring: #e8e6e3;
-  --input: #232220;
+  --success: #22c55e;
+  --warm: #f97316;
+  --ring: #ea580c;
+  --input: #292524;
+  --surface-a: #171513;
+  --surface-b: #1f1d1b;
 }
 
 @theme inline {
@@ -74,6 +78,8 @@
   --color-warm: var(--warm);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-surface-a: var(--surface-a);
+  --color-surface-b: var(--surface-b);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -82,6 +88,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────────────── */
@@ -91,12 +99,23 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
+*::-webkit-scrollbar {
+  width: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
 /* ── Code blocks ────────────────────────────────────────────────────────── */
 
 pre {
   border-radius: var(--radius) !important;
   margin: 0.75rem 0 !important;
-  font-size: 0.8125rem !important;
+  font-size: 0.8rem !important;
 }
 
 pre code {
@@ -109,3 +128,36 @@ pre code {
   background: var(--accent);
   color: var(--accent-foreground);
 }
+
+/* ── Smooth streaming ───────────────────────────────────────────────────── */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Textarea reset ─────────────────────────────────────────────────────── */
+
+textarea {
+  field-sizing: content;
+}
+
